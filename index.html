@@ -73,6 +73,10 @@
   .why-section:last-child { border-bottom: none; }
   .why-label { font-weight: 700; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
   .why-text { font-size: 13px; color: #334155; line-height: 1.4; }
+  .why-company { background: #f0f9ff; }
+  .why-company .why-text { color: #0c4a6e; }
+  .why-strength { background: #f0fdf4; }
+  .why-strength .why-text { color: #166534; }
   .why-concern { background: #fffbeb; }
   .why-concern .why-text { color: #92400e; }
 
@@ -253,10 +257,12 @@ function renderCard(job) {
   const why = typeof job.why_it_fits === 'string' ? tryParse(job.why_it_fits) : (job.why_it_fits || {});
   if (why && Object.keys(why).length) {
     let s = '';
-    if (why.role_match) s += `<div class="why-section"><span class="why-label">Role Match</span><span class="why-text">${esc(why.role_match)}</span></div>`;
-    if (why.experience_connection) s += `<div class="why-section"><span class="why-label">Your Experience</span><span class="why-text">${esc(why.experience_connection)}</span></div>`;
-    if (why.industry_relevance) s += `<div class="why-section"><span class="why-label">Industry Fit</span><span class="why-text">${esc(why.industry_relevance)}</span></div>`;
-    if (why.concerns) s += `<div class="why-section why-concern"><span class="why-label">Heads Up</span><span class="why-text">${esc(why.concerns)}</span></div>`;
+    if (why.company_snapshot) s += `<div class="why-section why-company"><span class="why-label">🏢 About the Company</span><span class="why-text">${esc(why.company_snapshot)}</span></div>`;
+    if (why.role_match) s += `<div class="why-section"><span class="why-label">🎯 Role Match</span><span class="why-text">${esc(why.role_match)}</span></div>`;
+    if (why.experience_connection) s += `<div class="why-section"><span class="why-label">💼 Your Experience</span><span class="why-text">${esc(why.experience_connection)}</span></div>`;
+    if (why.industry_relevance) s += `<div class="why-section"><span class="why-label">🏷️ Industry Fit</span><span class="why-text">${esc(why.industry_relevance)}</span></div>`;
+    if (why.strengths) s += `<div class="why-section why-strength"><span class="why-label">✅ Strengths</span><span class="why-text">${esc(why.strengths)}</span></div>`;
+    if (why.concerns) s += `<div class="why-section why-concern"><span class="why-label">⚠️ Heads Up</span><span class="why-text">${esc(why.concerns)}</span></div>`;
     if (why.summary && !why.role_match) s += `<div class="why-section"><span class="why-label">Summary</span><span class="why-text">${esc(why.summary)}</span></div>`;
     if (s) whyHtml = `<div class="why-fits">${s}</div>`;
   }
