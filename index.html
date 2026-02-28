@@ -95,16 +95,6 @@
   <p id="header-subtitle">Dashboard</p>
 </div>
 
-<!-- Setup screen (shown if no Supabase config) -->
-<div id="setup" class="setup-notice" style="display:none;">
-  <h2>Connect to Supabase</h2>
-  <p style="font-size:14px;color:#666;margin-bottom:16px;">Enter your Supabase project details to get started.</p>
-  <input id="setup-url" type="text" placeholder="Supabase Project URL (https://xxx.supabase.co)">
-  <input id="setup-key" type="text" placeholder="Supabase Anon Key">
-  <br>
-  <button onclick="saveConfig()">Connect</button>
-</div>
-
 <!-- Main app -->
 <div id="app" style="display:none;">
   <div class="controls">
@@ -154,35 +144,18 @@
 
 <script>
 // ── Config ──
-const STORAGE_KEY = 'job_finder_config';
+const SUPABASE_URL = 'https://mijyjyttryjcwglqjpfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1panlqeXR0cnlqY3dnbHFqcGZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNDMzNDgsImV4cCI6MjA4NzgxOTM0OH0.kQYQFbbeckz_IVzbLSbyNosPAkot-ksqSJk80VR-i3I';
 let sbClient = null;
 let allJobs = [];
 
 // Dream companies (keep in sync with config.py)
 const DREAM_COMPANIES = new Set(['eon', 'daydream', 'beni']);
 
-function getConfig() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; }
-  catch { return null; }
-}
-
-function saveConfig() {
-  const url = document.getElementById('setup-url').value.trim();
-  const key = document.getElementById('setup-key').value.trim();
-  if (!url || !key) return alert('Both fields are required.');
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, key }));
-  location.reload();
-}
-
 // ── Init ──
 function init() {
-  const config = getConfig();
-  if (!config) {
-    document.getElementById('setup').style.display = 'block';
-    return;
-  }
 
-  sbClient = window.supabase.createClient(config.url, config.key);
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   document.getElementById('app').style.display = 'block';
   loadJobs();
 
@@ -208,8 +181,7 @@ async function loadJobs() {
     renderJobs();
   } catch (e) {
     document.getElementById('jobs-container').innerHTML =
-      `<div class="empty-state"><h2>Connection Error</h2><p>${e.message}</p>
-       <p style="margin-top:12px;"><button onclick="localStorage.removeItem('${STORAGE_KEY}');location.reload();" class="btn btn-down">Reset Connection</button></p></div>`;
+      `<div class="empty-state"><h2>Connection Error</h2><p>${e.message}</p></div>`;
   }
 }
 
