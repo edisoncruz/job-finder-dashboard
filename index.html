@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sara's Job Finder — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f5f5; --card: #ffffff; --text: #1a1a1a; --muted: #666;
+    --accent: #2563eb; --border: #e5e5e5;
+    --green-bg: #dcfce7; --green-text: #166534;
+    --blue-bg: #dbeafe; --blue-text: #1e40af;
+    --amber-bg: #fef3c7; --amber-text: #92400e;
+    --purple-bg: #fae8ff; --purple-text: #86198f;
+    --red-bg: #fef2f2; --red-text: #991b1b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header */
+  .header { background: #1a1a1a; color: #fff; padding: 20px 24px; }
+  .header h1 { font-size: 22px; font-weight: 700; }
+  .header p { font-size: 13px; color: #a0a0a0; margin-top: 2px; }
+
+  /* Controls */
+  .controls { padding: 16px 24px; background: #fff; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .controls select, .controls input { font-size: 14px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+  .controls label { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .control-group { display: flex; align-items: center; gap: 6px; }
+
+  /* Stats bar */
+  .stats-bar { padding: 12px 24px; background: #fafafa; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .stats-bar span { font-weight: 600; color: var(--text); }
+
+  /* Container */
+  .container { max-width: 860px; margin: 0 auto; }
+
+  /* Job card */
+  .job-card { background: var(--card); margin: 12px 16px; border-radius: 8px; border: 1px solid var(--border); padding: 20px 24px; transition: box-shadow 0.15s; }
+  .job-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .job-card.inactive { opacity: 0.5; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 3px; }
+  .badge-strong { background: var(--green-bg); color: var(--green-text); }
+  .badge-good { background: var(--blue-bg); color: var(--blue-text); }
+  .badge-stretch { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-dream { background: var(--purple-bg); color: var(--purple-text); }
+  .badge-inactive { background: #f3f4f6; color: #6b7280; }
+
+  .job-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .job-meta { font-size: 13px; color: var(--muted); margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .why-fits { margin: 12px 0; padding: 12px 16px; background: #f8fafc; border-left: 3px solid #e2e8f0; border-radius: 0 6px 6px 0; }
+  .why-row { font-size: 13px; color: #333; margin-bottom: 6px; line-height: 1.4; }
+  .why-row:last-child { margin-bottom: 0; }
+  .why-label { font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; display: block; margin-bottom: 1px; }
+  .why-concern { color: #b45309; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .btn { display: inline-block; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; }
+  .btn-apply { background: var(--accent); color: #fff; }
+  .btn-up { background: #f0fdf4; color: var(--green-text); border: 1px solid #bbf7d0; }
+  .btn-down { background: var(--red-bg); color: var(--red-text); border: 1px solid #fecaca; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+
+  /* Feedback reason dropdown */
+  .feedback-form { display: none; margin-top: 10px; padding: 12px; background: #fafafa; border-radius: 6px; border: 1px solid var(--border); }
+  .feedback-form.show { display: block; }
+  .feedback-form select { font-size: 13px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; margin-right: 8px; }
+  .feedback-form button { font-size: 13px; padding: 6px 14px; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
+  .empty-state h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 48px; font-size: 15px; color: var(--muted); }
+
+  /* Setup notice */
+  .setup-notice { max-width: 500px; margin: 60px auto; padding: 32px; background: #fff; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+  .setup-notice h2 { margin-bottom: 12px; }
+  .setup-notice input { width: 100%; margin: 6px 0; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+  .setup-notice button { margin-top: 12px; padding: 10px 24px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Sara's Job Finder</h1>
+  <p id="header-subtitle">Dashboard</p>
+</div>
+
+<!-- Setup screen (shown if no Supabase config) -->
+<div id="setup" class="setup-notice" style="display:none;">
+  <h2>Connect to Supabase</h2>
+  <p style="font-size:14px;color:#666;margin-bottom:16px;">Enter your Supabase project details to get started.</p>
+  <input id="setup-url" type="text" placeholder="Supabase Project URL (https://xxx.supabase.co)">
+  <input id="setup-key" type="text" placeholder="Supabase Anon Key">
+  <br>
+  <button onclick="saveConfig()">Connect</button>
+</div>
+
+<!-- Main app -->
+<div id="app" style="display:none;">
+  <div class="controls">
+    <div class="control-group">
+      <label>Sort:</label>
+      <select id="sort-select">
+        <option value="score">Score (High → Low)</option>
+        <option value="date">Date Posted (Newest)</option>
+        <option value="company">Company (A-Z)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Tier:</label>
+      <select id="tier-filter">
+        <option value="all">All Tiers</option>
+        <option value="strong">Strong Match (8+)</option>
+        <option value="good">Worth a Look (6-8)</option>
+        <option value="stretch">Stretch (&lt;6)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Location:</label>
+      <select id="location-filter">
+        <option value="all">All Locations</option>
+        <option value="remote">Remote</option>
+        <option value="fl">South Florida</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Status:</label>
+      <select id="status-filter">
+        <option value="active">Active</option>
+        <option value="all">All (incl. inactive)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <input id="search-input" type="text" placeholder="Search company or title..." style="width:200px;">
+    </div>
+  </div>
+
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <div class="container" id="jobs-container">
+    <div class="loading">Loading jobs...</div>
+  </div>
+</div>
+
+<script>
+// ── Config ──
+const STORAGE_KEY = 'job_finder_config';
+let supabase = null;
+let allJobs = [];
+
+// Dream companies (keep in sync with config.py)
+const DREAM_COMPANIES = new Set(['eon', 'daydream', 'beni']);
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; }
+  catch { return null; }
+}
+
+function saveConfig() {
+  const url = document.getElementById('setup-url').value.trim();
+  const key = document.getElementById('setup-key').value.trim();
+  if (!url || !key) return alert('Both fields are required.');
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, key }));
+  location.reload();
+}
+
+// ── Init ──
+function init() {
+  const config = getConfig();
+  if (!config) {
+    document.getElementById('setup').style.display = 'block';
+    return;
+  }
+
+  supabase = window.supabase.createClient(config.url, config.key);
+  document.getElementById('app').style.display = 'block';
+  loadJobs();
+
+  // Event listeners
+  document.getElementById('sort-select').addEventListener('change', renderJobs);
+  document.getElementById('tier-filter').addEventListener('change', renderJobs);
+  document.getElementById('location-filter').addEventListener('change', renderJobs);
+  document.getElementById('status-filter').addEventListener('change', renderJobs);
+  document.getElementById('search-input').addEventListener('input', renderJobs);
+}
+
+// ── Load Jobs ──
+async function loadJobs() {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .not('score', 'is', null)
+      .order('score', { ascending: false });
+
+    if (error) throw error;
+    allJobs = data || [];
+    renderJobs();
+  } catch (e) {
+    document.getElementById('jobs-container').innerHTML =
+      `<div class="empty-state"><h2>Connection Error</h2><p>${e.message}</p>
+       <p style="margin-top:12px;"><button onclick="localStorage.removeItem('${STORAGE_KEY}');location.reload();" class="btn btn-down">Reset Connection</button></p></div>`;
+  }
+}
+
+// ── Filter & Sort ──
+function getFilteredJobs() {
+  const tier = document.getElementById('tier-filter').value;
+  const loc = document.getElementById('location-filter').value;
+  const status = document.getElementById('status-filter').value;
+  const search = document.getElementById('search-input').value.toLowerCase().trim();
+  const sort = document.getElementById('sort-select').value;
+
+  let jobs = [...allJobs];
+
+  // Status filter
+  if (status === 'active') jobs = jobs.filter(j => j.is_active);
+
+  // Tier filter
+  if (tier === 'strong') jobs = jobs.filter(j => j.score >= 8);
+  else if (tier === 'good') jobs = jobs.filter(j => j.score >= 6 && j.score < 8);
+  else if (tier === 'stretch') jobs = jobs.filter(j => j.score < 6);
+
+  // Location filter
+  if (loc === 'remote') jobs = jobs.filter(j => /remote|anywhere|distributed|work from home/i.test(j.location || ''));
+  else if (loc === 'fl') jobs = jobs.filter(j => /miami|fort lauderdale|boca|hollywood|south florida|, fl/i.test(j.location || ''));
+
+  // Search
+  if (search) {
+    jobs = jobs.filter(j =>
+      (j.title || '').toLowerCase().includes(search) ||
+      (j.company || '').toLowerCase().includes(search)
+    );
+  }
+
+  // Sort
+  if (sort === 'score') jobs.sort((a, b) => (b.score || 0) - (a.score || 0));
+  else if (sort === 'date') jobs.sort((a, b) => (b.date_posted || '').localeCompare(a.date_posted || ''));
+  else if (sort === 'company') jobs.sort((a, b) => (a.company || '').localeCompare(b.company || ''));
+
+  return jobs;
+}
+
+// ── Render ──
+function renderJobs() {
+  const jobs = getFilteredJobs();
+  const container = document.getElementById('jobs-container');
+
+  // Stats
+  const active = allJobs.filter(j => j.is_active);
+  const strong = active.filter(j => j.score >= 8).length;
+  const good = active.filter(j => j.score >= 6 && j.score < 8).length;
+  const stretch = active.filter(j => j.score < 6).length;
+  const applied = allJobs.filter(j => j.app_status === 'applied').length;
+  document.getElementById('stats-bar').innerHTML =
+    `Showing <span>${jobs.length}</span> of <span>${allJobs.length}</span> jobs · ` +
+    `<span style="color:var(--green-text)">${strong}</span> strong · ` +
+    `<span style="color:var(--blue-text)">${good}</span> good · ` +
+    `<span style="color:var(--amber-text)">${stretch}</span> stretch · ` +
+    `<span>${applied}</span> applied`;
+
+  if (jobs.length === 0) {
+    container.innerHTML = '<div class="empty-state"><h2>No jobs match your filters</h2><p>Try adjusting the filters above.</p></div>';
+    return;
+  }
+
+  container.innerHTML = jobs.map(job => renderCard(job)).join('');
+}
+
+function renderCard(job) {
+  const isDream = DREAM_COMPANIES.has((job.company || '').toLowerCase());
+  const isActive = job.is_active;
+
+  // Tier badge
+  let tierBadge = '';
+  if (job.score >= 8) tierBadge = '<span class="badge badge-strong">★ Strong Match</span>';
+  else if (job.score >= 6) tierBadge = '<span class="badge badge-good">Worth a Look</span>';
+  else tierBadge = '<span class="badge badge-stretch">Stretch</span>';
+
+  // Why it fits
+  let whyHtml = '';
+  const why = typeof job.why_it_fits === 'string' ? tryParse(job.why_it_fits) : (job.why_it_fits || {});
+  if (why && Object.keys(why).length > 0) {
+    let rows = '';
+    if (why.role_match) rows += `<div class="why-row"><span class="why-label">Role Match</span>${esc(why.role_match)}</div>`;
+    if (why.experience_connection) rows += `<div class="why-row"><span class="why-label">Your Experience</span>${esc(why.experience_connection)}</div>`;
+    if (why.industry_relevance) rows += `<div class="why-row"><span class="why-label">Industry Fit</span>${esc(why.industry_relevance)}</div>`;
+    if (why.concerns) rows += `<div class="why-row why-concern"><span class="why-label">⚠️ Heads Up</span>${esc(why.concerns)}</div>`;
+    if (why.summary && !why.role_match) rows += `<div class="why-row">${esc(why.summary)}</div>`;
+    if (rows) whyHtml = `<div class="why-fits">${rows}</div>`;
+  }
+
+  // Feedback state
+  const hasFeedback = job.feedback && job.feedback !== '';
+  const feedbackLabel = job.feedback === 'relevant' ? '✅ Marked as good match'
+    : job.feedback === 'not_relevant' ? '❌ Marked as not for me'
+    : job.feedback === 'applied' ? '🚀 Applied' : '';
+
+  return `
+  <div class="job-card${isActive ? '' : ' inactive'}" id="card-${job.id}">
+    <div class="badges">
+      ${tierBadge}
+      ${isDream ? '<span class="badge badge-dream">Dream Company</span>' : ''}
+      ${!isActive ? '<span class="badge badge-inactive">No Longer Active</span>' : ''}
+    </div>
+    <div class="job-title">${esc(job.title)} — ${esc(job.company)}</div>
+    <div class="job-meta">
+      ${job.location ? `<span>📍 ${esc(job.location)}</span>` : ''}
+      ${job.salary_info ? `<span>💰 ${esc(job.salary_info)}</span>` : ''}
+      ${job.date_posted ? `<span>📅 ${esc(job.date_posted)}</span>` : ''}
+      <span>Score: ${(job.score || 0).toFixed(1)}/10</span>
+      <span>Source: ${esc(job.source || 'unknown')}</span>
+    </div>
+    ${whyHtml}
+    <div class="actions">
+      ${job.url ? `<a href="${esc(job.url)}" target="_blank" class="btn btn-apply" onclick="markApplied('${job.id}', this)">Apply →</a>` : ''}
+      ${hasFeedback
+        ? `<span class="btn" style="background:#f9fafb;color:var(--muted);cursor:default;">${feedbackLabel}</span>`
+        : `<button class="btn btn-up" onclick="submitFeedback('${job.id}', 'relevant', this)">👍 Good match</button>
+           <button class="btn btn-down" onclick="showFeedbackForm('${job.id}')">👎 Not for me</button>`
+      }
+    </div>
+    <div class="feedback-form" id="fb-form-${job.id}">
+      <select id="fb-reason-${job.id}">
+        <option value="">Why isn't this a fit?</option>
+        <option value="wrong_role">Wrong role / function</option>
+        <option value="wrong_location">Wrong location</option>
+        <option value="wrong_industry">Wrong industry</option>
+        <option value="too_junior">Too junior</option>
+        <option value="too_senior">Too senior</option>
+        <option value="low_comp">Compensation too low</option>
+        <option value="other">Other</option>
+      </select>
+      <button class="btn btn-down" onclick="submitNotRelevant('${job.id}')">Submit</button>
+    </div>
+  </div>`;
+}
+
+// ── Helpers ──
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function tryParse(s) {
+  try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return {}; }
+}
+
+// ── Feedback Actions ──
+function showFeedbackForm(jobId) {
+  document.getElementById(`fb-form-${jobId}`).classList.toggle('show');
+}
+
+async function submitFeedback(jobId, vote, btnEl) {
+  btnEl.disabled = true;
+  btnEl.textContent = '...';
+  try {
+    const { error } = await supabase.from('feedback').insert({
+      job_id: jobId, vote: vote, reason: '', created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    // Update local state
+    const job = allJobs.find(j => j.id === jobId);
+    if (job) job.feedback = vote;
+    renderJobs();
+  } catch (e) {
+    alert('Failed to submit feedback: ' + e.message);
+    btnEl.disabled = false;
+    btnEl.textContent = vote === 'relevant' ? '👍 Good match' : '👎 Not for me';
+  }
+}
+
+async function submitNotRelevant(jobId) {
+  const reason = document.getElementById(`fb-reason-${jobId}`).value;
+  try {
+    const { error } = await supabase.from('feedback').insert({
+      job_id: jobId, vote: 'not_relevant', reason: reason, created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    const job = allJobs.find(j => j.id === jobId);
+    if (job) { job.feedback = 'not_relevant'; job.feedback_reason = reason; }
+    renderJobs();
+  } catch (e) {
+    alert('Failed to submit feedback: ' + e.message);
+  }
+}
+
+async function markApplied(jobId, linkEl) {
+  // Fire-and-forget: mark as applied in Supabase
+  try {
+    await supabase.from('feedback').insert({
+      job_id: jobId, vote: 'applied', reason: '', created_at: new Date().toISOString()
+    });
+    const job = allJobs.find(j => j.id === jobId);
+    if (job) { job.feedback = 'applied'; job.app_status = 'applied'; }
+    // Don't re-render immediately — let the link open first
+    setTimeout(renderJobs, 500);
+  } catch (e) {
+    console.warn('Failed to mark as applied:', e);
+  }
+}
+
+// ── Boot ──
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
