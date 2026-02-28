@@ -155,7 +155,7 @@
 <script>
 // ── Config ──
 const STORAGE_KEY = 'job_finder_config';
-let supabase = null;
+let sbClient = null;
 let allJobs = [];
 
 // Dream companies (keep in sync with config.py)
@@ -182,7 +182,7 @@ function init() {
     return;
   }
 
-  supabase = window.supabase.createClient(config.url, config.key);
+  sbClient = window.supabase.createClient(config.url, config.key);
   document.getElementById('app').style.display = 'block';
   loadJobs();
 
@@ -197,7 +197,7 @@ function init() {
 // ── Load Jobs ──
 async function loadJobs() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sbClient
       .from('jobs')
       .select('*')
       .not('score', 'is', null)
@@ -367,7 +367,7 @@ async function submitFeedback(jobId, vote, btnEl) {
   btnEl.disabled = true;
   btnEl.textContent = '...';
   try {
-    const { error } = await supabase.from('feedback').insert({
+    const { error } = await sbClient.from('feedback').insert({
       job_id: jobId, vote: vote, reason: '', created_at: new Date().toISOString()
     });
     if (error) throw error;
@@ -385,7 +385,7 @@ async function submitFeedback(jobId, vote, btnEl) {
 async function submitNotRelevant(jobId) {
   const reason = document.getElementById(`fb-reason-${jobId}`).value;
   try {
-    const { error } = await supabase.from('feedback').insert({
+    const { error } = await sbClient.from('feedback').insert({
       job_id: jobId, vote: 'not_relevant', reason: reason, created_at: new Date().toISOString()
     });
     if (error) throw error;
@@ -400,7 +400,7 @@ async function submitNotRelevant(jobId) {
 async function markApplied(jobId, linkEl) {
   // Fire-and-forget: mark as applied in Supabase
   try {
-    await supabase.from('feedback').insert({
+    await sbClient.from('feedback').insert({
       job_id: jobId, vote: 'applied', reason: '', created_at: new Date().toISOString()
     });
     const job = allJobs.find(j => j.id === jobId);
