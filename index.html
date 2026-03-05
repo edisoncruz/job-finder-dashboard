@@ -56,6 +56,10 @@
   .badge-stretch { background: var(--amber-bg); color: var(--amber-text); }
   .badge-dream { background: var(--purple-bg); color: var(--purple-text); }
   .badge-inactive { background: #f3f4f6; color: #6b7280; }
+  .badge-applied { background: #dbeafe; color: #1e40af; }
+  .badge-tracking { background: #fef3c7; color: #92400e; }
+  .badge-offer { background: #dcfce7; color: #166534; }
+  .badge-rejected { background: #fef2f2; color: #991b1b; }
 
   .score-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; flex-shrink: 0; }
   .score-high { background: var(--green-bg); color: var(--green-text); }
@@ -81,18 +85,45 @@
   .why-concern .why-text { color: #92400e; }
 
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 8px; cursor: pointer; border: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 8px; cursor: pointer; border: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: all 0.15s; }
   .btn-apply { background: var(--accent); color: #fff; flex: 1; min-width: 0; }
+  .btn-apply:hover { background: #1d4ed8; }
   .btn-up { background: #f0fdf4; color: var(--green-text); border: 1px solid #bbf7d0; }
+  .btn-up:hover { background: #dcfce7; }
   .btn-down { background: var(--red-bg); color: var(--red-text); border: 1px solid #fecaca; }
+  .btn-down:hover { background: #fee2e2; }
+  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+  .btn-secondary:hover { background: #e2e8f0; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:active { transform: scale(0.97); }
 
-  /* Feedback reason */
+  /* Applied state */
+  .applied-state { margin-top: 12px; padding: 12px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+  .applied-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .applied-label { font-size: 13px; font-weight: 600; color: #1e40af; }
+  .applied-date { font-size: 11px; color: #64748b; }
+  .status-tracker { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .status-tracker select { font-size: 12px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; flex: 1; min-width: 160px; }
+  .status-tracker button { font-size: 12px; padding: 6px 14px; }
+  .current-status { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 4px; margin-top: 6px; }
+
+  /* Feedback confirmation inline */
+  .feedback-confirmed { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; }
+  .feedback-confirmed.positive { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .feedback-confirmed.negative { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .feedback-confirmed .fb-icon { font-size: 16px; flex-shrink: 0; }
+  .feedback-confirmed .fb-msg { line-height: 1.4; }
+  .feedback-confirmed .fb-hint { font-size: 11px; color: #64748b; margin-top: 2px; display: block; }
+
+  /* Feedback reason form */
   .feedback-form { display: none; margin-top: 10px; padding: 12px; background: #fafafa; border-radius: 8px; border: 1px solid var(--border); }
   .feedback-form.show { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .feedback-form select { font-size: 13px; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; flex: 1; min-width: 150px; }
   .feedback-form button { font-size: 13px; padding: 8px 16px; }
+
+  /* Toast notification */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a1a; color: #fff; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 1000; opacity: 0; transition: all 0.3s ease; pointer-events: none; max-width: 90vw; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
   .empty-state h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
@@ -111,6 +142,8 @@
     .actions .btn { width: 100%; }
     .feedback-form.show { flex-direction: column; }
     .feedback-form select, .feedback-form button { width: 100%; }
+    .status-tracker { flex-direction: column; }
+    .status-tracker select, .status-tracker button { width: 100%; }
   }
 
   @media (min-width: 601px) {
@@ -134,7 +167,7 @@
     <div class="control-group">
       <label>Sort</label>
       <select id="sort-select">
-        <option value="score">Score (High → Low)</option>
+        <option value="score">Score (High &rarr; Low)</option>
         <option value="date">Date (Newest)</option>
         <option value="company">Company (A-Z)</option>
       </select>
@@ -160,6 +193,7 @@
       <label>Status</label>
       <select id="status-filter">
         <option value="active">Active</option>
+        <option value="applied">Applied</option>
         <option value="all">All</option>
       </select>
     </div>
@@ -176,12 +210,25 @@
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 const SUPABASE_URL = 'https://mijyjyttryjcwglqjpfs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1panlqeXR0cnlqY3dnbHFqcGZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNDMzNDgsImV4cCI6MjA4NzgxOTM0OH0.kQYQFbbeckz_IVzbLSbyNosPAkot-ksqSJk80VR-i3I';
 let sbClient = null;
 let allJobs = [];
-const DREAM_COMPANIES = new Set(['eon', 'daydream', 'beni']);
+const DREAM_COMPANIES = new Set(['eon', 'daydream', 'beni', 'treet', 'archive', 'cake']);
+
+// Application status definitions with display info
+const APP_STATUSES = {
+  'applied':              { label: 'Applied',              icon: '📨', badgeClass: 'badge-applied' },
+  'ats_rejected':         { label: 'ATS Rejected',         icon: '🚫', badgeClass: 'badge-rejected' },
+  'recruiter_callback':   { label: 'Recruiter Callback',   icon: '📞', badgeClass: 'badge-tracking' },
+  'hiring_mgr_callback':  { label: 'Hiring Manager Callback', icon: '📞', badgeClass: 'badge-tracking' },
+  'interviewing':         { label: 'Interviewing',         icon: '🎤', badgeClass: 'badge-tracking' },
+  'didnt_get_job':        { label: "Didn't Get the Job",   icon: '😔', badgeClass: 'badge-rejected' },
+  'offer_received':       { label: 'Offer Received!',      icon: '🎉', badgeClass: 'badge-offer' },
+};
 
 function init() {
   sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -213,7 +260,8 @@ function getFilteredJobs() {
   const sort = document.getElementById('sort-select').value;
 
   let jobs = [...allJobs];
-  if (status === 'active') jobs = jobs.filter(j => j.is_active);
+  if (status === 'active') jobs = jobs.filter(j => j.is_active && j.app_status !== 'applied' && !j.app_status);
+  else if (status === 'applied') jobs = jobs.filter(j => j.app_status && j.app_status !== '');
   if (tier === 'strong') jobs = jobs.filter(j => j.score >= 8);
   else if (tier === 'good') jobs = jobs.filter(j => j.score >= 6 && j.score < 8);
   else if (tier === 'stretch') jobs = jobs.filter(j => j.score < 6);
@@ -230,12 +278,15 @@ function renderJobs() {
   const jobs = getFilteredJobs();
   const container = document.getElementById('jobs-container');
   const active = allJobs.filter(j => j.is_active);
+  const appliedJobs = allJobs.filter(j => j.app_status && j.app_status !== '');
+  const inProgress = appliedJobs.filter(j => !['ats_rejected','didnt_get_job','offer_received'].includes(j.app_status));
   document.getElementById('stats-bar').innerHTML =
-    `Showing <span>${jobs.length}</span> of <span>${allJobs.length}</span> · ` +
-    `<span style="color:var(--green-text)">${active.filter(j=>j.score>=8).length}</span> strong · ` +
-    `<span style="color:var(--blue-text)">${active.filter(j=>j.score>=6&&j.score<8).length}</span> good · ` +
-    `<span style="color:var(--amber-text)">${active.filter(j=>j.score<6).length}</span> stretch · ` +
-    `<span>${allJobs.filter(j=>j.app_status==='applied').length}</span> applied`;
+    `Showing <span>${jobs.length}</span> of <span>${allJobs.length}</span> &middot; ` +
+    `<span style="color:var(--green-text)">${active.filter(j=>j.score>=8).length}</span> strong &middot; ` +
+    `<span style="color:var(--blue-text)">${active.filter(j=>j.score>=6&&j.score<8).length}</span> good &middot; ` +
+    `<span style="color:var(--amber-text)">${active.filter(j=>j.score<6).length}</span> stretch &middot; ` +
+    `<span style="color:var(--accent)">${appliedJobs.length}</span> applied` +
+    (inProgress.length ? ` &middot; <span style="color:var(--purple-text)">${inProgress.length}</span> in progress` : '');
 
   if (!jobs.length) {
     container.innerHTML = '<div class="empty-state"><h2>No jobs match your filters</h2><p>Try adjusting the filters above.</p></div>';
@@ -252,25 +303,98 @@ function renderCard(job) {
     : score >= 6 ? '<span class="badge badge-good">Worth a Look</span>'
     : '<span class="badge badge-stretch">Stretch</span>';
 
+  // Application status badge
+  const statusInfo = APP_STATUSES[job.app_status];
+  const statusBadge = statusInfo ? `<span class="badge ${statusInfo.badgeClass}">${statusInfo.icon} ${statusInfo.label}</span>` : '';
+
   // Why it fits
   let whyHtml = '';
   const why = typeof job.why_it_fits === 'string' ? tryParse(job.why_it_fits) : (job.why_it_fits || {});
   if (why && Object.keys(why).length) {
     let s = '';
-    if (why.company_snapshot) s += `<div class="why-section why-company"><span class="why-label">🏢 About the Company</span><span class="why-text">${esc(why.company_snapshot)}</span></div>`;
-    if (why.role_match) s += `<div class="why-section"><span class="why-label">🎯 Role Match</span><span class="why-text">${esc(why.role_match)}</span></div>`;
-    if (why.experience_connection) s += `<div class="why-section"><span class="why-label">💼 Your Experience</span><span class="why-text">${esc(why.experience_connection)}</span></div>`;
-    if (why.industry_relevance) s += `<div class="why-section"><span class="why-label">🏷️ Industry Fit</span><span class="why-text">${esc(why.industry_relevance)}</span></div>`;
-    if (why.strengths) s += `<div class="why-section why-strength"><span class="why-label">✅ Strengths</span><span class="why-text">${esc(why.strengths)}</span></div>`;
-    if (why.concerns) s += `<div class="why-section why-concern"><span class="why-label">⚠️ Heads Up</span><span class="why-text">${esc(why.concerns)}</span></div>`;
+    if (why.company_snapshot) s += `<div class="why-section why-company"><span class="why-label">About the Company</span><span class="why-text">${esc(why.company_snapshot)}</span></div>`;
+    if (why.role_match) s += `<div class="why-section"><span class="why-label">Role Match</span><span class="why-text">${esc(why.role_match)}</span></div>`;
+    if (why.experience_connection) s += `<div class="why-section"><span class="why-label">Your Experience</span><span class="why-text">${esc(why.experience_connection)}</span></div>`;
+    if (why.industry_relevance) s += `<div class="why-section"><span class="why-label">Industry Fit</span><span class="why-text">${esc(why.industry_relevance)}</span></div>`;
+    if (why.strengths) s += `<div class="why-section why-strength"><span class="why-label">Strengths</span><span class="why-text">${esc(why.strengths)}</span></div>`;
+    if (why.concerns) s += `<div class="why-section why-concern"><span class="why-label">Heads Up</span><span class="why-text">${esc(why.concerns)}</span></div>`;
     if (why.summary && !why.role_match) s += `<div class="why-section"><span class="why-label">Summary</span><span class="why-text">${esc(why.summary)}</span></div>`;
     if (s) whyHtml = `<div class="why-fits">${s}</div>`;
   }
 
-  const hasFb = job.feedback && job.feedback !== '';
-  const fbLabel = job.feedback === 'relevant' ? '✅ Good match'
-    : job.feedback === 'not_relevant' ? '❌ Not for me'
-    : job.feedback === 'applied' ? '🚀 Applied' : '';
+  // Determine card state
+  const isApplied = job.app_status && job.app_status !== '';
+  const hasFb = job.feedback && job.feedback !== '' && !isApplied;
+
+  // Build action area based on state
+  let actionsHtml = '';
+
+  if (isApplied) {
+    // Applied state: show status tracker
+    const appliedAt = job.applied_at ? formatDate(job.applied_at) : (job.feedback === 'applied' ? 'Recently' : '');
+    const currentStatus = APP_STATUSES[job.app_status];
+
+    actionsHtml = `
+    <div class="applied-state">
+      <div class="applied-header">
+        <span class="applied-label">${currentStatus ? currentStatus.icon : '📨'} ${currentStatus ? currentStatus.label : 'Applied'}</span>
+        ${appliedAt ? `<span class="applied-date">Applied ${appliedAt}</span>` : ''}
+      </div>
+      <div class="status-tracker">
+        <select id="status-${job.id}" onchange="updateAppStatus('${job.id}', this.value)">
+          ${Object.entries(APP_STATUSES).map(([val, info]) =>
+            `<option value="${val}" ${job.app_status === val ? 'selected' : ''}>${info.icon} ${info.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+      ${job.url ? `<div style="margin-top:8px"><a href="${esc(job.url)}" target="_blank" class="btn btn-secondary" style="font-size:12px;padding:6px 14px;">View listing</a></div>` : ''}
+    </div>`;
+  } else if (hasFb) {
+    // Has feedback (good match / not for me) — show confirmation
+    if (job.feedback === 'relevant') {
+      actionsHtml = `
+      <div class="feedback-confirmed positive">
+        <span class="fb-icon">👍</span>
+        <div class="fb-msg">
+          <strong>Marked as a good match</strong>
+          <span class="fb-hint">Future searches will prioritize similar roles and companies.</span>
+        </div>
+      </div>
+      ${job.url ? `<div class="actions"><a href="${esc(job.url)}" target="_blank" class="btn btn-apply" onclick="markApplied('${job.id}')">Apply &rarr;</a></div>` : ''}`;
+    } else if (job.feedback === 'not_relevant') {
+      const reasonLabels = { wrong_role: 'Wrong role', wrong_location: 'Wrong location', wrong_industry: 'Wrong industry', too_junior: 'Too junior', too_senior: 'Too senior', low_comp: 'Low compensation', other: 'Other' };
+      const reasonText = job.feedback_reason ? ` &mdash; ${reasonLabels[job.feedback_reason] || job.feedback_reason}` : '';
+      actionsHtml = `
+      <div class="feedback-confirmed negative">
+        <span class="fb-icon">👎</span>
+        <div class="fb-msg">
+          <strong>Not a fit${reasonText}</strong>
+          <span class="fb-hint">Future results will deprioritize similar matches.</span>
+        </div>
+      </div>`;
+    }
+  } else {
+    // Default: show Apply + feedback buttons
+    actionsHtml = `
+    <div class="actions">
+      ${job.url ? `<a href="${esc(job.url)}" target="_blank" class="btn btn-apply" onclick="markApplied('${job.id}')">Apply &rarr;</a>` : ''}
+      <button class="btn btn-up" onclick="submitFeedback('${job.id}','relevant',this)">👍 Good match</button>
+      <button class="btn btn-down" onclick="showFeedbackForm('${job.id}')">👎 Not for me</button>
+    </div>
+    <div class="feedback-form" id="fb-form-${job.id}">
+      <select id="fb-reason-${job.id}">
+        <option value="">Why isn't this a fit?</option>
+        <option value="wrong_role">Wrong role / function</option>
+        <option value="wrong_location">Wrong location</option>
+        <option value="wrong_industry">Wrong industry</option>
+        <option value="too_junior">Too junior</option>
+        <option value="too_senior">Too senior</option>
+        <option value="low_comp">Compensation too low</option>
+        <option value="other">Other</option>
+      </select>
+      <button class="btn btn-down" onclick="submitNotRelevant('${job.id}')">Submit</button>
+    </div>`;
+  }
 
   return `
   <div class="job-card${job.is_active ? '' : ' inactive'}" id="card-${job.id}">
@@ -279,6 +403,7 @@ function renderCard(job) {
         <div class="badges">
           ${tierBadge}
           ${isDream ? '<span class="badge badge-dream">Dream Company</span>' : ''}
+          ${statusBadge}
           ${!job.is_active ? '<span class="badge badge-inactive">Inactive</span>' : ''}
         </div>
         <div class="job-title">${esc(job.title)}</div>
@@ -293,63 +418,107 @@ function renderCard(job) {
       <span>${esc(job.source || '')}</span>
     </div>
     ${whyHtml}
-    <div class="actions">
-      ${job.url ? `<a href="${esc(job.url)}" target="_blank" class="btn btn-apply" onclick="markApplied('${job.id}',this)">Apply →</a>` : ''}
-      ${hasFb
-        ? `<span class="btn" style="background:#f9fafb;color:var(--muted);cursor:default">${fbLabel}</span>`
-        : `<button class="btn btn-up" onclick="submitFeedback('${job.id}','relevant',this)">👍 Good match</button>
-           <button class="btn btn-down" onclick="showFeedbackForm('${job.id}')">👎 Not for me</button>`}
-    </div>
-    <div class="feedback-form" id="fb-form-${job.id}">
-      <select id="fb-reason-${job.id}">
-        <option value="">Why isn't this a fit?</option>
-        <option value="wrong_role">Wrong role / function</option>
-        <option value="wrong_location">Wrong location</option>
-        <option value="wrong_industry">Wrong industry</option>
-        <option value="too_junior">Too junior</option>
-        <option value="too_senior">Too senior</option>
-        <option value="low_comp">Compensation too low</option>
-        <option value="other">Other</option>
-      </select>
-      <button class="btn btn-down" onclick="submitNotRelevant('${job.id}')">Submit</button>
-    </div>
+    ${actionsHtml}
   </div>`;
 }
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function esc(s) { if (!s) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
 function tryParse(s) { try { return typeof s==='string' ? JSON.parse(s) : s; } catch { return {}; } }
 
+function formatDate(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return iso; }
+}
+
+let toastTimer = null;
+function showToast(msg, duration) {
+  duration = duration || 3000;
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
 function showFeedbackForm(id) { document.getElementById(`fb-form-${id}`).classList.toggle('show'); }
 
+// ─── Feedback Actions ───────────────────────────────────────────────────────
+
 async function submitFeedback(jobId, vote, btn) {
-  btn.disabled = true; btn.textContent = '...';
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Saving...';
   try {
-    const { error } = await sbClient.from('feedback').insert({ job_id: jobId, vote, reason: '', created_at: new Date().toISOString() });
+    const { error } = await sbClient.from('feedback').insert({
+      job_id: jobId, vote, reason: '', created_at: new Date().toISOString()
+    });
     if (error) throw error;
     const job = allJobs.find(j => j.id === jobId);
     if (job) job.feedback = vote;
+    showToast('👍 Noted! Future searches will prioritize similar roles.');
     renderJobs();
-  } catch (e) { alert('Failed: ' + e.message); btn.disabled = false; btn.textContent = vote === 'relevant' ? '👍 Good match' : '👎 Not for me'; }
+  } catch (e) {
+    showToast('Failed to save — please try again.');
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
 }
 
 async function submitNotRelevant(jobId) {
   const reason = document.getElementById(`fb-reason-${jobId}`).value;
+  const btn = document.querySelector(`#fb-form-${jobId} button`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
   try {
-    const { error } = await sbClient.from('feedback').insert({ job_id: jobId, vote: 'not_relevant', reason, created_at: new Date().toISOString() });
+    const { error } = await sbClient.from('feedback').insert({
+      job_id: jobId, vote: 'not_relevant', reason, created_at: new Date().toISOString()
+    });
     if (error) throw error;
     const job = allJobs.find(j => j.id === jobId);
     if (job) { job.feedback = 'not_relevant'; job.feedback_reason = reason; }
+    showToast('👎 Got it — we\'ll deprioritize similar matches.');
     renderJobs();
-  } catch (e) { alert('Failed: ' + e.message); }
+  } catch (e) {
+    showToast('Failed to save — please try again.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+  }
 }
 
 async function markApplied(jobId) {
+  const now = new Date().toISOString();
+  showToast('📨 Marked as applied — good luck!');
   try {
-    await sbClient.from('feedback').insert({ job_id: jobId, vote: 'applied', reason: '', created_at: new Date().toISOString() });
+    await sbClient.from('feedback').insert({
+      job_id: jobId, vote: 'applied', reason: now, created_at: now
+    });
+    // Also directly update the jobs table app_status + applied_at
+    await sbClient.from('jobs').update({
+      app_status: 'applied', applied_at: now, feedback: 'applied'
+    }).eq('id', jobId);
+
     const job = allJobs.find(j => j.id === jobId);
-    if (job) { job.feedback = 'applied'; job.app_status = 'applied'; }
-    setTimeout(renderJobs, 500);
+    if (job) { job.feedback = 'applied'; job.app_status = 'applied'; job.applied_at = now; }
+    setTimeout(renderJobs, 400);
   } catch (e) { console.warn('Failed to mark applied:', e); }
+}
+
+async function updateAppStatus(jobId, newStatus) {
+  const statusInfo = APP_STATUSES[newStatus];
+  showToast(`${statusInfo.icon} Status updated to: ${statusInfo.label}`);
+  try {
+    await sbClient.from('jobs').update({ app_status: newStatus }).eq('id', jobId);
+    const job = allJobs.find(j => j.id === jobId);
+    if (job) job.app_status = newStatus;
+    // Re-render after a short delay for toast visibility
+    setTimeout(renderJobs, 300);
+  } catch (e) {
+    showToast('Failed to update status — please try again.');
+    console.warn('Status update failed:', e);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
