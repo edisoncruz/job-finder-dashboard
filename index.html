@@ -132,6 +132,29 @@
   .empty-state h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
   .loading { text-align: center; padding: 48px; font-size: 15px; color: var(--muted); }
 
+  /* Settings panel */
+  .header { display: flex; justify-content: space-between; align-items: center; }
+  .header-left { flex: 1; }
+  .gear-btn { background: none; border: none; color: #a0a0a0; font-size: 22px; cursor: pointer; padding: 4px 8px; transition: color 0.15s; }
+  .gear-btn:hover { color: #fff; }
+  .settings-panel { display: none; background: #fff; border-bottom: 1px solid var(--border); padding: 20px 24px; }
+  .settings-panel.show { display: block; }
+  .settings-section { margin-bottom: 20px; }
+  .settings-section:last-child { margin-bottom: 0; }
+  .settings-section h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .settings-section p { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .settings-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .settings-input-row input { flex: 1; font-size: 13px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; }
+  .settings-input-row button { font-size: 13px; padding: 8px 16px; background: var(--accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+  .settings-input-row button:hover { background: #1d4ed8; }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--purple-bg); color: var(--purple-text); border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .chip .remove-chip { cursor: pointer; font-size: 14px; opacity: 0.6; margin-left: 2px; }
+  .chip .remove-chip:hover { opacity: 1; }
+  .url-list { list-style: none; font-size: 12px; }
+  .url-list li { padding: 4px 0; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .url-list li a { color: var(--accent); word-break: break-all; }
+
   /* ── Mobile ── */
   @media (max-width: 600px) {
     .header { padding: 14px 12px; }
@@ -161,8 +184,32 @@
 <body>
 
 <div class="header">
-  <h1>Sara's Job Finder</h1>
-  <p id="header-subtitle">Dashboard</p>
+  <div class="header-left">
+    <h1>Sara's Job Finder</h1>
+    <p id="header-subtitle">Dashboard</p>
+  </div>
+  <button class="gear-btn" onclick="toggleSettings()" title="Settings">⚙</button>
+</div>
+
+<div class="settings-panel" id="settings-panel">
+  <div class="settings-section">
+    <h3>⭐ Dream Companies</h3>
+    <p>Jobs from these companies get a scoring boost. Add companies Sara is especially excited about.</p>
+    <div class="settings-input-row">
+      <input type="text" id="dream-company-input" placeholder="e.g. Glossier" onkeydown="if(event.key==='Enter')addDreamCompany()">
+      <button onclick="addDreamCompany()">Add</button>
+    </div>
+    <div class="chip-list" id="dream-company-chips"></div>
+  </div>
+  <div class="settings-section">
+    <h3>📋 Applied Elsewhere</h3>
+    <p>Paste URLs of jobs Sara applied to outside this pipeline. This helps refine future search results.</p>
+    <div class="settings-input-row">
+      <input type="text" id="external-app-input" placeholder="https://linkedin.com/jobs/..." onkeydown="if(event.key==='Enter')addExternalApp()">
+      <button onclick="addExternalApp()">Add</button>
+    </div>
+    <ul class="url-list" id="external-apps-list"></ul>
+  </div>
 </div>
 
 <div id="app" style="display:none;">
@@ -196,7 +243,9 @@
       <label>Status</label>
       <select id="status-filter">
         <option value="active">Active</option>
+        <option value="reviewed">Reviewed</option>
         <option value="applied">Applied</option>
+        <option value="inactive">Inactive</option>
         <option value="all">All</option>
       </select>
     </div>
@@ -237,6 +286,8 @@ function init() {
   sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   document.getElementById('app').style.display = 'block';
   loadJobs();
+  loadDreamCompanies();
+  loadExternalApps();
   ['sort-select','tier-filter','location-filter','status-filter'].forEach(id =>
     document.getElementById(id).addEventListener('change', renderJobs));
   document.getElementById('search-input').addEventListener('input', renderJobs);
@@ -263,8 +314,10 @@ function getFilteredJobs() {
   const sort = document.getElementById('sort-select').value;
 
   let jobs = [...allJobs];
-  if (status === 'active') jobs = jobs.filter(j => j.is_active && j.app_status !== 'applied' && !j.app_status);
+  if (status === 'active') jobs = jobs.filter(j => j.is_active && !j.app_status && !j.feedback);
+  else if (status === 'reviewed') jobs = jobs.filter(j => j.is_active && j.feedback && (j.feedback === 'relevant' || j.feedback === 'not_relevant') && !j.app_status);
   else if (status === 'applied') jobs = jobs.filter(j => j.app_status && j.app_status !== '');
+  else if (status === 'inactive') jobs = jobs.filter(j => !j.is_active);
   if (tier === 'strong') jobs = jobs.filter(j => j.score >= 8);
   else if (tier === 'good') jobs = jobs.filter(j => j.score >= 6 && j.score < 8);
   else if (tier === 'stretch') jobs = jobs.filter(j => j.score < 6);
@@ -566,6 +619,138 @@ async function updateAppStatus(jobId, newStatus) {
   } catch (e) {
     showToast('Failed to update status — please try again.');
     console.warn('Status update failed:', e);
+  }
+}
+
+// ─── Settings Panel ──────────────────────────────────────────────────────────
+
+function toggleSettings() {
+  document.getElementById('settings-panel').classList.toggle('show');
+}
+
+// ─── Dream Companies ─────────────────────────────────────────────────────────
+
+const HARDCODED_DREAM_COS = new Set(['eon', 'daydream', 'beni', 'treet', 'archive', 'cake']);
+let userDreamCompanies = [];
+
+async function loadDreamCompanies() {
+  try {
+    const { data, error } = await sbClient.from('dream_companies').select('name');
+    if (error) throw error;
+    userDreamCompanies = (data || []).map(r => r.name.toLowerCase().trim());
+    // Merge into DREAM_COMPANIES set
+    userDreamCompanies.forEach(name => DREAM_COMPANIES.add(name));
+    renderDreamChips();
+    renderJobs(); // Re-render to pick up new dream badges
+  } catch (e) {
+    console.warn('Failed to load dream companies:', e);
+    renderDreamChips(); // Still show hardcoded ones
+  }
+}
+
+function renderDreamChips() {
+  const container = document.getElementById('dream-company-chips');
+  // Show hardcoded ones (not removable) + user-added (removable)
+  let html = '';
+  HARDCODED_DREAM_COS.forEach(name => {
+    const display = name.charAt(0).toUpperCase() + name.slice(1);
+    html += `<span class="chip">${esc(display)}</span>`;
+  });
+  userDreamCompanies.forEach(name => {
+    if (HARDCODED_DREAM_COS.has(name)) return; // Skip if also hardcoded
+    const display = name.charAt(0).toUpperCase() + name.slice(1);
+    html += `<span class="chip">${esc(display)} <span class="remove-chip" onclick="removeDreamCompany('${esc(name)}')">&times;</span></span>`;
+  });
+  container.innerHTML = html;
+}
+
+async function addDreamCompany() {
+  const input = document.getElementById('dream-company-input');
+  const name = input.value.trim().toLowerCase();
+  if (!name) return;
+  if (DREAM_COMPANIES.has(name)) {
+    showToast('Already in the list!');
+    input.value = '';
+    return;
+  }
+  try {
+    const { error } = await sbClient.from('dream_companies').insert({ name });
+    if (error) throw error;
+    userDreamCompanies.push(name);
+    DREAM_COMPANIES.add(name);
+    input.value = '';
+    renderDreamChips();
+    renderJobs();
+    showToast(`⭐ Added "${name}" — matching jobs will get a scoring boost.`);
+  } catch (e) {
+    showToast('Failed to add — please try again.');
+    console.warn('Add dream company failed:', e);
+  }
+}
+
+async function removeDreamCompany(name) {
+  try {
+    const { error } = await sbClient.from('dream_companies').delete().eq('name', name);
+    if (error) throw error;
+    userDreamCompanies = userDreamCompanies.filter(n => n !== name);
+    DREAM_COMPANIES.delete(name);
+    renderDreamChips();
+    renderJobs();
+    showToast(`Removed "${name}".`);
+  } catch (e) {
+    showToast('Failed to remove — please try again.');
+    console.warn('Remove dream company failed:', e);
+  }
+}
+
+// ─── External Applications ───────────────────────────────────────────────────
+
+let externalApps = [];
+
+async function loadExternalApps() {
+  try {
+    const { data, error } = await sbClient.from('external_applications').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    externalApps = data || [];
+    renderExternalApps();
+  } catch (e) {
+    console.warn('Failed to load external applications:', e);
+  }
+}
+
+function renderExternalApps() {
+  const container = document.getElementById('external-apps-list');
+  if (!externalApps.length) {
+    container.innerHTML = '<li style="color:#94a3b8;font-style:italic;">No external applications added yet.</li>';
+    return;
+  }
+  container.innerHTML = externalApps.map(app => {
+    const url = esc(app.url);
+    const truncated = app.url.length > 60 ? app.url.substring(0, 60) + '...' : app.url;
+    const date = app.created_at ? formatDate(app.created_at) : '';
+    return `<li><a href="${url}" target="_blank">${esc(truncated)}</a>${date ? ` <span style="color:#94a3b8">&middot; ${date}</span>` : ''}</li>`;
+  }).join('');
+}
+
+async function addExternalApp() {
+  const input = document.getElementById('external-app-input');
+  const url = input.value.trim();
+  if (!url) return;
+  if (!/^https?:\/\/.+/i.test(url)) {
+    showToast('Please enter a valid URL starting with http:// or https://');
+    return;
+  }
+  try {
+    const now = new Date().toISOString();
+    const { error } = await sbClient.from('external_applications').insert({ url, notes: '', created_at: now });
+    if (error) throw error;
+    externalApps.unshift({ url, notes: '', created_at: now });
+    input.value = '';
+    renderExternalApps();
+    showToast('📋 Added — this will refine future search results.');
+  } catch (e) {
+    showToast('Failed to add — please try again.');
+    console.warn('Add external app failed:', e);
   }
 }
 
