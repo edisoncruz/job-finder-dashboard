@@ -94,6 +94,8 @@
   .btn-down:hover { background: #fee2e2; }
   .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
   .btn-secondary:hover { background: #e2e8f0; }
+  .btn-notjob { background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; font-size: 11px; padding: 6px 12px; }
+  .btn-notjob:hover { background: #f1f5f9; color: #64748b; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn:active { transform: scale(0.97); }
 
@@ -111,6 +113,7 @@
   .feedback-confirmed { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; }
   .feedback-confirmed.positive { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
   .feedback-confirmed.negative { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .feedback-confirmed.notjob { background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; }
   .feedback-confirmed .fb-icon { font-size: 16px; flex-shrink: 0; }
   .feedback-confirmed .fb-msg { line-height: 1.4; }
   .feedback-confirmed .fb-hint { font-size: 11px; color: #64748b; margin-top: 2px; display: block; }
@@ -372,6 +375,17 @@ function renderCard(job) {
           <span class="fb-hint">Future results will deprioritize similar matches.</span>
         </div>
       </div>`;
+    } else if (job.feedback === 'not_a_job') {
+      const notjobLabels = { company_news: 'Company news / blog', team_page: 'Team page', expired: 'Expired listing', duplicate: 'Duplicate entry', other: 'Non-listing' };
+      const reasonText = job.feedback_reason ? ` &mdash; ${notjobLabels[job.feedback_reason] || job.feedback_reason}` : '';
+      actionsHtml = `
+      <div class="feedback-confirmed notjob">
+        <span class="fb-icon">🚫</span>
+        <div class="fb-msg">
+          <strong>Flagged: not a job listing${reasonText}</strong>
+          <span class="fb-hint">Removed from results. Similar entries will be filtered in the future.</span>
+        </div>
+      </div>`;
     }
   } else {
     // Default: show Apply + feedback buttons
@@ -393,6 +407,20 @@ function renderCard(job) {
         <option value="other">Other</option>
       </select>
       <button class="btn btn-down" onclick="submitNotRelevant('${job.id}')">Submit</button>
+    </div>
+    <div style="margin-top:6px;">
+      <button class="btn btn-notjob" onclick="showNotJobForm('${job.id}')">🚫 Not a job listing</button>
+    </div>
+    <div class="feedback-form" id="notjob-form-${job.id}">
+      <select id="notjob-reason-${job.id}">
+        <option value="">What is it?</option>
+        <option value="company_news">Company news / blog post</option>
+        <option value="team_page">Team page / about us</option>
+        <option value="expired">Expired or closed listing</option>
+        <option value="duplicate">Duplicate / repeat entry</option>
+        <option value="other">Other non-listing</option>
+      </select>
+      <button class="btn btn-down" onclick="submitNotAJob('${job.id}')">Submit</button>
     </div>`;
   }
 
@@ -446,6 +474,7 @@ function showToast(msg, duration) {
 }
 
 function showFeedbackForm(id) { document.getElementById(`fb-form-${id}`).classList.toggle('show'); }
+function showNotJobForm(id) { document.getElementById(`notjob-form-${id}`).classList.toggle('show'); }
 
 // ─── Feedback Actions ───────────────────────────────────────────────────────
 
@@ -481,6 +510,25 @@ async function submitNotRelevant(jobId) {
     const job = allJobs.find(j => j.id === jobId);
     if (job) { job.feedback = 'not_relevant'; job.feedback_reason = reason; }
     showToast('👎 Got it — we\'ll deprioritize similar matches.');
+    renderJobs();
+  } catch (e) {
+    showToast('Failed to save — please try again.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+  }
+}
+
+async function submitNotAJob(jobId) {
+  const reason = document.getElementById(`notjob-reason-${jobId}`).value;
+  const btn = document.querySelector(`#notjob-form-${jobId} button`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  try {
+    const { error } = await sbClient.from('feedback').insert({
+      job_id: jobId, vote: 'not_a_job', reason, created_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    const job = allJobs.find(j => j.id === jobId);
+    if (job) { job.feedback = 'not_a_job'; job.feedback_reason = reason; job.is_active = false; }
+    showToast('🚫 Flagged — this will be filtered out going forward.');
     renderJobs();
   } catch (e) {
     showToast('Failed to save — please try again.');
