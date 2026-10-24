@@ -1,0 +1,43 @@
+# Keeps the free-tier Supabase project from auto-pausing (it pauses after
+# ~7 days without requests) and fails loudly — GitHub emails the repo owner —
+# if the project is unreachable or the Mac pipeline has stopped syncing.
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: "0 12 */2 * *"   # every other day, 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  actions: write   # lets the last step re-enable this workflow
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping Supabase and check sync freshness
+        run: |
+          # Reuse the public URL + anon key already shipped in the dashboard
+          URL=$(grep -oE "SUPABASE_URL = '[^']+'" index.html | cut -d"'" -f2)
+          KEY=$(grep -oE "SUPABASE_ANON_KEY = '[^']+'" index.html | cut -d"'" -f2)
+          RESP=$(curl -sf --max-time 30 \
+            "$URL/rest/v1/jobs?select=synced_at&order=synced_at.desc&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY") \
+            || { echo "::error::Supabase unreachable — project may be paused"; exit 1; }
+          LAST=$(echo "$RESP" | jq -r '.[0].synced_at // empty')
+          echo "Last pipeline sync: ${LAST:-never}"
+          AGE_DAYS=$(( ( $(date +%s) - $(date -d "$LAST" +%s) ) / 86400 ))
+          if [ "$AGE_DAYS" -gt 4 ]; then
+            echo "::error::No pipeline sync for $AGE_DAYS days — is the Mac running the job?"
+            exit 1
+          fi
+
+      # GitHub disables scheduled workflows after 60 days without repo activity.
+      - name: Keep this workflow enabled
+        if: always()
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
