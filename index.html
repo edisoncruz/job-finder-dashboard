@@ -179,6 +179,19 @@
     .stats-bar { padding: 12px 24px; }
     .job-card { margin: 12px 16px; padding: 20px; }
   }
+  .job-card.highlight { box-shadow: 0 0 0 3px var(--accent); }
+  details.kit { margin-top: 12px; border: 1px solid var(--purple-bg); border-radius: 8px; background: #fdf4ff; }
+  details.kit summary { cursor: pointer; padding: 10px 12px; font-size: 13px; font-weight: 600; color: var(--purple-text); }
+  .kit-block { padding: 8px 12px; border-top: 1px solid var(--purple-bg); font-size: 13px; line-height: 1.5; }
+  .kit-block ul { margin: 4px 0 0 18px; padding: 0; }
+  .kit-block li { margin-bottom: 6px; }
+  .kit-block p { margin: 4px 0 0; }
+  .kit-h { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .kit-sub { color: var(--muted); font-size: 12px; }
+  .kit-link { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .kit-copy { font-size: 11px; padding: 2px 10px; }
+  .kit-warn { background: var(--amber-bg); }
+  .last-run { font-size: 12px; color: var(--muted); padding: 0 16px; }
 </style>
 </head>
 <body>
@@ -256,6 +269,7 @@
   </div>
 
   <div class="stats-bar" id="stats-bar"></div>
+  <div class="last-run" id="last-run"></div>
 
   <div class="container" id="jobs-container">
     <div class="loading">Loading jobs...</div>
@@ -285,12 +299,84 @@ const APP_STATUSES = {
 function init() {
   sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   document.getElementById('app').style.display = 'block';
-  loadJobs();
+  loadJobs().then(handleDeepLink);
+  loadLastRun();
   loadDreamCompanies();
   loadExternalApps();
   ['sort-select','tier-filter','location-filter','status-filter'].forEach(id =>
     document.getElementById(id).addEventListener('change', renderJobs));
   document.getElementById('search-input').addEventListener('input', renderJobs);
+}
+
+// Links from the email digest: ?job_id=X&action=feedback&vote=relevant|not_relevant
+// records the vote immediately; ?job_id=X&view=kit opens that job's application kit.
+async function handleDeepLink() {
+  const p = new URLSearchParams(location.search);
+  const jobId = p.get('job_id');
+  if (!jobId) return;
+  const job = allJobs.find(j => j.id === jobId);
+  if (!job) { showToast('That listing is no longer available.'); return; }
+  document.getElementById('status-filter').value = 'all';
+  if (p.get('action') === 'feedback' && ['relevant', 'not_relevant'].includes(p.get('vote'))) {
+    const vote = p.get('vote');
+    if (job.feedback !== vote) {
+      const { error } = await sbClient.from('feedback').insert({
+        job_id: jobId, vote, reason: '', created_at: new Date().toISOString()
+      });
+      if (!error) job.feedback = vote;
+      showToast(error ? 'Failed to save — please try again.'
+        : vote === 'relevant' ? '👍 Saved — future digests will favor roles like this.'
+        : '👎 Saved — tell us why below to sharpen future picks.', 4000);
+    }
+  }
+  renderJobs();
+  history.replaceState(null, '', location.pathname);
+  const card = document.getElementById(`card-${jobId}`);
+  if (!card) return;
+  card.classList.add('highlight');
+  if (p.get('view') === 'kit') { const k = card.querySelector('details.kit'); if (k) k.open = true; }
+  if (p.get('vote') === 'not_relevant') showFeedbackForm(jobId);
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function loadLastRun() {
+  const { data } = await sbClient.from('pipeline_runs').select('finished_at,status')
+    .order('finished_at', { ascending: false }).limit(1);
+  if (!data || !data.length) return;
+  const el = document.getElementById('last-run');
+  if (el) el.textContent = `Updated ${formatDate(data[0].finished_at)}${data[0].status === 'failed' ? ' (last run had errors)' : ''}`;
+}
+
+function renderKit(job) {
+  const k = job.application_kit;
+  if (!k) return '';
+  const list = (items) => (items || []).map(i => `<li>${esc(i)}</li>`).join('');
+  const targets = (k.outreach_targets || []).map(t => `
+    <li><a href="${esc(t.search_url || k.linkedin_people_url)}" target="_blank"><strong>${esc(t.title)}</strong></a>
+      <div class="kit-sub">${esc(t.why)}</div>
+      <div class="kit-sub"><em>Opener:</em> ${esc(t.angle)}</div></li>`).join('');
+  const prior = (k.prior_applications || []).map(a =>
+    `<li>${esc(a.role)} — ${esc(a.status || 'applied')}${a.applied_on ? ` (${esc(a.applied_on)})` : ''}</li>`).join('');
+  return `
+  <details class="kit">
+    <summary>📋 Application kit</summary>
+    ${prior ? `<div class="kit-block"><div class="kit-h">You've applied here before</div><ul>${prior}</ul></div>` : ''}
+    <div class="kit-block"><div class="kit-h">Resume bullets for this role</div><ul>${list(k.resume_bullets)}</ul></div>
+    <div class="kit-block"><div class="kit-h">Intro note
+      <button class="btn btn-secondary kit-copy" onclick="copyText(this, ${esc(JSON.stringify(k.intro_note || ''))})">Copy</button></div>
+      <p>${esc(k.intro_note)}</p></div>
+    <div class="kit-block"><div class="kit-h">Who to reach out to
+      <a href="${esc(k.linkedin_people_url)}" target="_blank" class="kit-link">Everyone at ${esc(job.company)} on LinkedIn →</a></div>
+      <ul>${targets}</ul></div>
+    <div class="kit-block"><div class="kit-h">Interview talking points</div><ul>${list(k.talking_points)}</ul></div>
+    ${k.watch_outs ? `<div class="kit-block kit-warn"><div class="kit-h">Watch out for</div><p>${esc(k.watch_outs)}</p></div>` : ''}
+  </details>`;
+}
+
+async function copyText(btn, text) {
+  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
+  catch { btn.textContent = 'Copy failed'; }
+  setTimeout(() => btn.textContent = 'Copy', 2000);
 }
 
 async function loadJobs() {
@@ -321,7 +407,7 @@ function getFilteredJobs() {
   if (tier === 'strong') jobs = jobs.filter(j => j.score >= 8);
   else if (tier === 'good') jobs = jobs.filter(j => j.score >= 6 && j.score < 8);
   else if (tier === 'stretch') jobs = jobs.filter(j => j.score < 6);
-  if (loc === 'remote') jobs = jobs.filter(j => /remote|anywhere|distributed|work from home/i.test(j.location || ''));
+  if (loc === 'remote') jobs = jobs.filter(j => j.workplace === 'remote');
   else if (loc === 'fl') jobs = jobs.filter(j => /miami|fort lauderdale|boca|hollywood|south florida|broward|dade|palm beach|, fl/i.test(j.location || ''));
   if (search) jobs = jobs.filter(j => (j.title||'').toLowerCase().includes(search) || (j.company||'').toLowerCase().includes(search));
   if (sort === 'score') jobs.sort((a, b) => (b.score||0) - (a.score||0));
@@ -493,12 +579,14 @@ function renderCard(job) {
       <div class="score-circle ${scoreClass}">${score.toFixed(1)}</div>
     </div>
     <div class="job-meta">
+      ${job.workplace === 'remote' ? '<span>🏠 Remote (US)</span>' : ''}
       ${job.location ? `<span>📍 ${esc(job.location)}</span>` : ''}
       ${job.salary_info ? `<span>💰 ${esc(job.salary_info)}</span>` : ''}
       ${job.date_posted ? `<span>📅 ${esc(job.date_posted)}</span>` : ''}
       <span>${esc(job.source || '')}</span>
     </div>
     ${whyHtml}
+    ${renderKit(job)}
     ${actionsHtml}
   </div>`;
 }
