@@ -23,11 +23,15 @@ jobs:
           # Reuse the public URL + anon key already shipped in the dashboard
           URL=$(grep -oE "SUPABASE_URL = '[^']+'" index.html | cut -d"'" -f2)
           KEY=$(grep -oE "SUPABASE_ANON_KEY = '[^']+'" index.html | cut -d"'" -f2)
-          RESP=$(curl -sf --max-time 30 \
-            "$URL/rest/v1/jobs?select=synced_at&order=synced_at.desc&limit=1" \
-            -H "apikey: $KEY" -H "Authorization: Bearer $KEY") \
+          get() { curl -sf --max-time 30 "$URL/rest/v1/$1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"; }
+          RUNS=$(get "pipeline_runs?select=finished_at,status&order=finished_at.desc&limit=1") \
             || { echo "::error::Supabase unreachable — project may be paused"; exit 1; }
-          LAST=$(echo "$RESP" | jq -r '.[0].synced_at // empty')
+          LAST=$(echo "$RUNS" | jq -r '.[0].finished_at // empty')
+          if [ -n "$LAST" ] && [ "$(echo "$RUNS" | jq -r '.[0].status')" = "failed" ]; then
+            echo "::warning::Last pipeline run failed (Edison should have an alert email)"
+          fi
+          # Before the first recorded run, fall back to the newest job sync
+          [ -n "$LAST" ] || LAST=$(get "jobs?select=synced_at&order=synced_at.desc&limit=1" | jq -r '.[0].synced_at // empty')
           echo "Last pipeline sync: ${LAST:-never}"
           AGE_DAYS=$(( ( $(date +%s) - $(date -d "$LAST" +%s) ) / 86400 ))
           if [ "$AGE_DAYS" -gt 4 ]; then
